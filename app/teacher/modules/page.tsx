@@ -2,8 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getTeachers, getModulesByTeacher, createModule } from "@/src/services/api";
+import {
+  getTeachers,
+  getModulesByTeacher,
+  createModule,
+} from "@/src/services/api";
 import { User, Module, CreateModuleRequest } from "@/src/types";
+import toast from "react-hot-toast";
 
 export default function ModuleManagement() {
   const router = useRouter();
@@ -40,6 +45,7 @@ export default function ModuleManagement() {
       }
     } catch (error) {
       console.error("Error loading teachers:", error);
+      toast.error("Failed to load teachers");
     }
   };
 
@@ -50,6 +56,7 @@ export default function ModuleManagement() {
       setModules(response.data);
     } catch (error) {
       console.error("Error loading modules:", error);
+      toast.error("Failed to load modules");
     }
   };
 
@@ -64,14 +71,14 @@ export default function ModuleManagement() {
     e.preventDefault();
 
     if (!formData.moduleCode || !formData.moduleName) {
-      alert("Please fill in all required fields");
+      toast.error("Please fill in all required fields");
       return;
     }
 
     setLoading(true);
     try {
       await createModule(formData);
-      alert("Module created successfully!");
+      toast.success("Module created successfully!");
       setShowCreateForm(false);
       loadModules();
 
@@ -83,10 +90,7 @@ export default function ModuleManagement() {
         teacherId: selectedTeacher?.id || "",
       });
     } catch (error: any) {
-      alert(
-        "Error creating module: " +
-          (error.response?.data?.message || error.message),
-      );
+      toast.error(error.response?.data?.message || "Failed to create module");
     } finally {
       setLoading(false);
     }
