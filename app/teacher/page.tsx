@@ -9,7 +9,12 @@ import {
   getTodaySessions,
   startSession,
 } from "@/src/services/api";
-import { User, Module, AttendanceSession, CreateSessionRequest } from "@/src/types";
+import {
+  User,
+  Module,
+  AttendanceSession,
+  CreateSessionRequest,
+} from "@/src/types";
 import toast from "react-hot-toast";
 
 export default function TeacherDashboard() {
@@ -326,6 +331,11 @@ export default function TeacherDashboard() {
                         ⚠️ Mandatory Attendance
                       </span>
                     </label>
+                    {formData.mandatoryAttendance && (
+                      <p className="text-sm text-orange-600 mt-2">
+                        📋 Absences will be flagged in reports
+                      </p>
+                    )}
                   </div>
 
                   {formData.locationRequired && (
