@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createUser, createModule } from "@/src/services/api";
 import { UserRole, CreateUserRequest, CreateModuleRequest } from "@/src/types";
+import toast from "react-hot-toast";
 
 export default function AdminPanel() {
   const router = useRouter();
@@ -26,36 +27,35 @@ export default function AdminPanel() {
     teacherId: "",
   });
 
-  const handleUserSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await createUser(userForm);
-      alert(
-        `✅ ${userForm.role} created successfully!\n\nEmail: ${userForm.email}`,
-      );
+ const handleUserSubmit = async (e: React.FormEvent) => {
+   e.preventDefault();
+   setLoading(true);
+   try {
+     await createUser(userForm);
+     toast.success(`${userForm.role} created successfully!`, {
+       duration: 3000,
+     });
 
-      // Reset form
-      setUserForm({
-        email: "",
-        firstName: "",
-        lastName: "",
-        role: UserRole.STUDENT,
-      });
-    } catch (error: any) {
-      alert("❌ Error: " + (error.response?.data?.message || error.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
+     // Reset form
+     setUserForm({
+       email: "",
+       firstName: "",
+       lastName: "",
+       role: UserRole.STUDENT,
+     });
+   } catch (error: any) {
+     toast.error(error.response?.data?.message || "Failed to create user");
+   } finally {
+     setLoading(false);
+   }
+ };
   const handleBulkCreate = () => {
     const count = prompt("How many students do you want to create?", "10");
     if (!count) return;
 
     const num = parseInt(count);
     if (isNaN(num) || num < 1 || num > 100) {
-      alert("Please enter a number between 1 and 100");
+      toast.error("Please enter a number between 1 and 100");
       return;
     }
 
@@ -72,26 +72,33 @@ export default function AdminPanel() {
     createBulkUsers(students);
   };
 
-  const createBulkUsers = async (users: CreateUserRequest[]) => {
-    setLoading(true);
-    let successCount = 0;
-    let errorCount = 0;
+ const createBulkUsers = async (users: CreateUserRequest[]) => {
+   setLoading(true);
+   let successCount = 0;
+   let errorCount = 0;
 
-    for (const user of users) {
-      try {
-        await createUser(user);
-        successCount++;
-      } catch (error) {
-        errorCount++;
-        console.error(`Failed to create ${user.email}:`, error);
-      }
-    }
+   const loadingToast = toast.loading(`Creating ${users.length} users...`);
 
-    alert(
-      `✅ Created ${successCount} users\n${errorCount > 0 ? `❌ Failed: ${errorCount}` : ""}`,
-    );
-    setLoading(false);
-  };
+   for (const user of users) {
+     try {
+       await createUser(user);
+       successCount++;
+     } catch (error) {
+       errorCount++;
+       console.error(`Failed to create ${user.email}:`, error);
+     }
+   }
+
+   toast.dismiss(loadingToast);
+
+   if (errorCount === 0) {
+     toast.success(`✅ Created ${successCount} users successfully!`);
+   } else {
+     toast.error(`Created ${successCount} users, ${errorCount} failed`);
+   }
+
+   setLoading(false);
+ };
 
   return (
     <div className="min-h-screen bg-gray-50">

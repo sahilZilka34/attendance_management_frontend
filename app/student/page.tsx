@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { getStudents, scanQR, getStudentAttendance } from "@/src/services/api";
 import { User, AttendanceRecord } from "@/src/types";
+import toast from "react-hot-toast";
 
 export default function StudentPortal() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function StudentPortal() {
       }
     } catch (error) {
       console.error("Error loading students:", error);
+      toast.error("Failed to load students");
     }
   };
 
@@ -46,6 +48,7 @@ export default function StudentPortal() {
       setAttendanceHistory(response.data);
     } catch (error) {
       console.error("Error loading attendance:", error);
+      toast.error("Failed to load attendance history");
     }
   };
 
@@ -53,25 +56,26 @@ export default function StudentPortal() {
     setScanning(true);
     setScanResult(null);
 
-    // Request location permission
     if (navigator.geolocation) {
+      const locationToast = toast.loading("Getting your location...");
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Location granted, proceed with scanner
+          toast.dismiss(locationToast);
           initializeScanner(
             position.coords.latitude,
             position.coords.longitude,
           );
         },
         (error) => {
-          alert(
+          toast.dismiss(locationToast);
+          toast.error(
             "Location permission denied. Some sessions require location verification.",
           );
           initializeScanner(null, null);
         },
       );
     } else {
-      alert("Geolocation is not supported by your browser");
+      toast.error("Geolocation is not supported by your browser");
       initializeScanner(null, null);
     }
   };
@@ -92,11 +96,8 @@ export default function StudentPortal() {
 
     scanner.render(
       async (decodedText) => {
-        // Stop scanner
         scanner.clear();
         setScanning(false);
-
-        // Mark attendance
         await handleScan(decodedText, latitude, longitude);
       },
       (error) => {
@@ -111,11 +112,13 @@ export default function StudentPortal() {
     longitude: number | null,
   ) => {
     if (!selectedStudent) {
-      alert("Please select a student");
+      toast.error("Please select a student");
       return;
     }
 
     setLoading(true);
+    const loadingToast = toast.loading("Marking attendance...");
+
     try {
       const scanData = {
         qrToken,
@@ -127,17 +130,19 @@ export default function StudentPortal() {
 
       const response = await scanQR(scanData);
 
+      toast.dismiss(loadingToast);
       setScanResult("success");
-      alert(
-        `✅ Attendance marked successfully!\n\nStatus: ${response.data.status}\nTime: ${new Date(response.data.markedAt).toLocaleTimeString()}`,
+      toast.success(
+        `Attendance marked successfully!\nStatus: ${response.data.status}`,
+        { duration: 5000 },
       );
 
-      // Reload attendance history
       loadAttendanceHistory();
     } catch (error: any) {
+      toast.dismiss(loadingToast);
       setScanResult("error");
       const errorMsg = error.response?.data?.message || error.message;
-      alert("❌ Error: " + errorMsg);
+      toast.error(errorMsg, { duration: 6000 });
     } finally {
       setLoading(false);
     }
@@ -182,7 +187,6 @@ export default function StudentPortal() {
       </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Student Selection */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Select Student
@@ -205,7 +209,6 @@ export default function StudentPortal() {
 
         {selectedStudent && (
           <>
-            {/* QR Scanner Section */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">
                 📱 Scan QR Code
@@ -255,7 +258,6 @@ export default function StudentPortal() {
               )}
             </div>
 
-            {/* Attendance History */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">
                 📊 Your Attendance History ({attendanceHistory.length})

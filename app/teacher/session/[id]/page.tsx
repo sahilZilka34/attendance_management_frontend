@@ -10,6 +10,7 @@ import {
   exportAttendanceExcel,
 } from "@/src/services/api";
 import { AttendanceSession, AttendanceRecord } from "@/src/types";
+import toast from "react-hot-toast";
 
 export default function SessionQRPage() {
   const router = useRouter();
@@ -20,11 +21,43 @@ export default function SessionQRPage() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [qrExpired, setQrExpired] = useState(false);
 
   useEffect(() => {
     loadSessionData();
   }, [sessionId]);
+  // Check QR expiry
+  useEffect(() => {
+    if (!session || session.status !== "ACTIVE") return;
 
+    const checkExpiry = () => {
+      const sessionStart = new Date(
+        `${session.sessionDate}T${session.startTime}`,
+      );
+      const expiryTime = new Date(
+        sessionStart.getTime() + session.qrValidityMinutes * 60000,
+      );
+      const now = new Date();
+      const remaining = Math.floor(
+        (expiryTime.getTime() - now.getTime()) / 1000,
+      );
+
+      if (remaining <= 0) {
+        setQrExpired(true);
+        setTimeRemaining(0);
+        toast.error("QR Code has expired!", { id: "qr-expired" });
+      } else {
+        setQrExpired(false);
+        setTimeRemaining(remaining);
+      }
+    };
+
+    checkExpiry();
+    const interval = setInterval(checkExpiry, 1000);
+
+    return () => clearInterval(interval);
+  }, [session]);
   useEffect(() => {
     if (!autoRefresh) return;
 
@@ -61,23 +94,23 @@ export default function SessionQRPage() {
     }
   };
 
-  const handleCompleteSession = async () => {
-    if (!confirm("Are you sure you want to complete this session?")) return;
-
-    try {
-      await completeSession(sessionId);
-      alert("Session completed!");
-      router.push("/teacher");
-    } catch (error: any) {
-      alert(
-        "Error completing session: " +
-          (error.response?.data?.message || error.message),
-      );
-    }
-  };
+ const handleCompleteSession = async () => {
+   try {
+     await completeSession(sessionId);
+     toast.success("Session completed successfully!");
+     setTimeout(() => router.push("/teacher"), 1500);
+   } catch (error: any) {
+     toast.error(error.response?.data?.message || "Failed to complete session");
+   }
+ };
 
   const handleExport = () => {
     window.open(exportAttendanceExcel(sessionId), "_blank");
+  };
+  const formatTimeRemaining = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (loading) {
@@ -151,21 +184,53 @@ export default function SessionQRPage() {
               </span>
 
               {/* QR Code */}
+              {/* QR Code */}
               {session.status === "ACTIVE" && (
                 <div className="mb-6">
-                  <img
-                    src={getSessionQRImage(sessionId)}
-                    alt="QR Code"
-                    className="mx-auto border-4 border-gray-200 rounded-lg shadow-md"
-                    style={{ width: "400px", height: "400px" }}
-                  />
-                  <p className="text-sm text-gray-600 mt-4">
-                    ⏱️ QR Code expires in {session.qrValidityMinutes} minutes
-                  </p>
-                  {session.locationRequired && (
-                    <p className="text-sm text-blue-600 mt-2">
-                      📍 Location verification enabled
-                    </p>
+                  {!qrExpired ? (
+                    <>
+                      <img
+                        src={getSessionQRImage(sessionId)}
+                        alt="QR Code"
+                        className="mx-auto border-4 border-gray-200 rounded-lg shadow-md"
+                        style={{ width: "400px", height: "400px" }}
+                      />
+                      <div className="mt-4 text-center">
+                        <div
+                          className={`inline-block px-4 py-2 rounded-lg ${
+                            timeRemaining && timeRemaining < 60
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          <p className="text-sm font-medium">
+                            ⏱️ Expires in:{" "}
+                            {timeRemaining
+                              ? formatTimeRemaining(timeRemaining)
+                              : "Calculating..."}
+                          </p>
+                        </div>
+                      </div>
+                      {session.locationRequired && (
+                        <p className="text-sm text-blue-600 mt-2 text-center">
+                          📍 Location verification enabled
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 bg-red-50 rounded-lg border-2 border-red-200">
+                      <div className="text-6xl mb-4">⏰</div>
+                      <p className="text-xl font-bold text-red-800 mb-2">
+                        QR Code Expired
+                      </p>
+                      <p className="text-gray-600">
+                        The QR code is no longer valid for scanning
+                      </p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Valid for {session.qrValidityMinutes} minutes from
+                        session start
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

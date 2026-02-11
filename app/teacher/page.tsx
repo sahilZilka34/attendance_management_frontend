@@ -9,12 +9,8 @@ import {
   getTodaySessions,
   startSession,
 } from "@/src/services/api";
-import {
-  User,
-  Module,
-  AttendanceSession,
-  CreateSessionRequest,
-} from "@/src/types";
+import { User, Module, AttendanceSession, CreateSessionRequest } from "@/src/types";
+import toast from "react-hot-toast";
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -25,7 +21,6 @@ export default function TeacherDashboard() {
   const [showCreateSession, setShowCreateSession] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Form state
   const [formData, setFormData] = useState<CreateSessionRequest>({
     moduleId: "",
     sessionDate: new Date().toISOString().split("T")[0],
@@ -60,7 +55,7 @@ export default function TeacherDashboard() {
       }
     } catch (error) {
       console.error("Error loading teachers:", error);
-      alert("Error loading teachers");
+      toast.error("Failed to load teachers");
     }
   };
 
@@ -71,6 +66,7 @@ export default function TeacherDashboard() {
       setModules(response.data);
     } catch (error) {
       console.error("Error loading modules:", error);
+      toast.error("Failed to load modules");
     }
   };
 
@@ -81,18 +77,17 @@ export default function TeacherDashboard() {
       setTodaySessions(response.data);
     } catch (error) {
       console.error("Error loading sessions:", error);
+      toast.error("Failed to load sessions");
     }
   };
 
   const handleStartSession = async (sessionId: string) => {
     try {
       await startSession(sessionId);
+      toast.success("Session started successfully!");
       router.push(`/teacher/session/${sessionId}`);
     } catch (error: any) {
-      alert(
-        "Error starting session: " +
-          (error.response?.data?.message || error.message),
-      );
+      toast.error(error.response?.data?.message || "Failed to start session");
     }
   };
 
@@ -112,23 +107,22 @@ export default function TeacherDashboard() {
     e.preventDefault();
 
     if (!formData.moduleId) {
-      alert("Please select a module");
+      toast.error("Please select a module");
       return;
     }
 
     if (!selectedTeacher) {
-      alert("No teacher selected");
+      toast.error("No teacher selected");
       return;
     }
 
     setLoading(true);
     try {
       await createSession(formData, selectedTeacher.id);
-      alert("Session created successfully!");
+      toast.success("Session created successfully!");
       setShowCreateSession(false);
       loadTodaySessions();
 
-      // Reset form
       setFormData({
         moduleId: "",
         sessionDate: new Date().toISOString().split("T")[0],
@@ -143,10 +137,7 @@ export default function TeacherDashboard() {
         mandatoryAttendance: true,
       });
     } catch (error: any) {
-      alert(
-        "Error creating session: " +
-          (error.response?.data?.message || error.message),
-      );
+      toast.error(error.response?.data?.message || "Failed to create session");
     } finally {
       setLoading(false);
     }
@@ -169,7 +160,6 @@ export default function TeacherDashboard() {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Teacher Selection */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Select Teacher
@@ -192,7 +182,6 @@ export default function TeacherDashboard() {
 
         {selectedTeacher && (
           <>
-            {/* Actions */}
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <button
                 onClick={() => setShowCreateSession(!showCreateSession)}
@@ -208,7 +197,6 @@ export default function TeacherDashboard() {
               </button>
             </div>
 
-            {/* Create Session Form */}
             {showCreateSession && (
               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">
@@ -216,7 +204,6 @@ export default function TeacherDashboard() {
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Module Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Module *
@@ -238,7 +225,6 @@ export default function TeacherDashboard() {
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
-                    {/* Date */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Date *
@@ -253,7 +239,6 @@ export default function TeacherDashboard() {
                       />
                     </div>
 
-                    {/* Classroom */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Classroom *
@@ -271,7 +256,6 @@ export default function TeacherDashboard() {
                   </div>
 
                   <div className="grid md:grid-cols-3 gap-4">
-                    {/* Start Time */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Start Time *
@@ -286,7 +270,6 @@ export default function TeacherDashboard() {
                       />
                     </div>
 
-                    {/* End Time */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         End Time *
@@ -301,7 +284,6 @@ export default function TeacherDashboard() {
                       />
                     </div>
 
-                    {/* QR Validity */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         QR Validity (minutes)
@@ -318,7 +300,6 @@ export default function TeacherDashboard() {
                     </div>
                   </div>
 
-                  {/* Toggles */}
                   <div className="flex items-center space-x-8">
                     <label className="flex items-center cursor-pointer">
                       <input
@@ -346,36 +327,42 @@ export default function TeacherDashboard() {
                       </span>
                     </label>
                   </div>
-                  {/* Location Fields (if enabled) */}
+
                   {formData.locationRequired && (
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <h3 className="font-semibold text-gray-800 mb-3">
                         📍 Campus Location Settings
                       </h3>
 
-                      {/* Quick Actions */}
                       <div className="mb-4 space-y-2">
                         <button
                           type="button"
                           onClick={() => {
                             if (navigator.geolocation) {
+                              const loadingToast = toast.loading(
+                                "Getting your location...",
+                              );
                               navigator.geolocation.getCurrentPosition(
                                 (position) => {
-                                  setFormData((prev) => ({
+                                  setFormData((prev: any) => ({
                                     ...prev,
                                     campusLatitude: position.coords.latitude,
                                     campusLongitude: position.coords.longitude,
                                   }));
-                                  alert("✅ Current location captured!");
+                                  toast.dismiss(loadingToast);
+                                  toast.success(
+                                    "Location captured successfully!",
+                                  );
                                 },
                                 (error) => {
-                                  alert(
-                                    "❌ Could not get location. Please enable location services.",
+                                  toast.dismiss(loadingToast);
+                                  toast.error(
+                                    "Could not get location. Please enable location services.",
                                   );
                                 },
                               );
                             } else {
-                              alert(
+                              toast.error(
                                 "Geolocation is not supported by your browser",
                               );
                             }
@@ -389,39 +376,37 @@ export default function TeacherDashboard() {
                           <button
                             type="button"
                             onClick={() => {
-                              // Paris (Eiffel Tower) - Example preset
-                              setFormData((prev) => ({
+                              setFormData((prev: any) => ({
                                 ...prev,
                                 campusLatitude: 53.4187916,
                                 campusLongitude: -7.9036762,
                                 campusRadiusMeters: 500,
                               }));
-                              alert("📍 Set to Athlone Campus");
+                              toast.success("Set to Athlone Campus");
                             }}
                             className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
                           >
-                            Athlone Campus
+                            🏫 Athlone Campus
                           </button>
+
                           <button
                             type="button"
                             onClick={() => {
-                              // Paris (Eiffel Tower) - Example preset
-                              setFormData((prev) => ({
+                              setFormData((prev: any) => ({
                                 ...prev,
                                 campusLatitude: 52.6748926,
                                 campusLongitude: -8.6485083,
                                 campusRadiusMeters: 500,
                               }));
-                              alert("📍 Set to Athlone Campus");
+                              toast.success("Set to Moylish Campus");
                             }}
                             className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
                           >
-                            Moylish Campus
+                            🏫 Moylish Campus
                           </button>
                         </div>
                       </div>
 
-                      {/* Manual Entry (Collapsed by default) */}
                       <details className="mb-3">
                         <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 mb-2">
                           ⚙️ Manual Entry (Advanced)
@@ -470,7 +455,6 @@ export default function TeacherDashboard() {
                         </div>
                       </details>
 
-                      {/* Current Location Display */}
                       <div className="bg-white p-3 rounded border border-blue-200 text-sm">
                         <p className="font-medium text-gray-700 mb-1">
                           Current Settings:
@@ -485,13 +469,12 @@ export default function TeacherDashboard() {
                       </div>
 
                       <p className="text-xs text-gray-600 mt-2">
-                        💡 Tip: Use "Use My Current Location" if you&apos;re
-                        already on campus, or select a preset
+                        💡 Tip: Use &quot;Use My Current Location&quot; if
+                        you&apos;re already on campus, or select a preset
                       </p>
                     </div>
                   )}
 
-                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={loading}
@@ -503,7 +486,6 @@ export default function TeacherDashboard() {
               </div>
             )}
 
-            {/* Today's Sessions */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">
                 📅 Today&apos;s Sessions
